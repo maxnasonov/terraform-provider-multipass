@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"log"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -81,6 +83,14 @@ func (r instanceResourceType) GetSchema(_ context.Context) (tfsdk.Schema, diag.D
 					tfsdk.RequiresReplace(),
 				},
 			},
+			"cloudinit_string": {
+				MarkdownDescription: "The cloud-init configuration.",
+				Type:                types.StringType,
+				Optional:            true,
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					tfsdk.RequiresReplace(),
+				},
+			},
 		},
 	}, nil
 }
@@ -94,12 +104,13 @@ func (t instanceResourceType) NewResource(ctx context.Context, in tfsdk.Provider
 }
 
 type Instance struct {
-	Name          types.String `tfsdk:"name"`
-	Image         types.String `tfsdk:"image"`
-	CPUS          types.Number `tfsdk:"cpus"`
-	Memory        types.String `tfsdk:"memory"`
-	Disk          types.String `tfsdk:"disk"`
-	CloudInitFile types.String `tfsdk:"cloudinit_file"`
+	Name            types.String `tfsdk:"name"`
+	Image           types.String `tfsdk:"image"`
+	CPUS            types.Number `tfsdk:"cpus"`
+	Memory          types.String `tfsdk:"memory"`
+	Disk            types.String `tfsdk:"disk"`
+	CloudInitFile   types.String `tfsdk:"cloudinit_file"`
+	CloudInitString types.String `tfsdk:"cloudinit_string"`
 }
 
 type instanceResource struct {
@@ -126,13 +137,35 @@ func (r instanceResource) Create(ctx context.Context, req tfsdk.CreateResourceRe
 		cpus = plan.CPUS.Value.String()
 	}
 
+	var cloudInitFile string
+	if plan.CloudInitFile.Null {
+		if plan.CloudInitString.Null {
+			cloudInitFile = ""
+		} else {
+			file, err := os.CreateTemp("", "multipass-*")
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close()
+			defer os.Remove(file.Name())
+
+			data := []byte(plan.CloudInitString.Value)
+			if _, err := file.Write(data); err != nil {
+				log.Fatal(err)
+			}
+			cloudInitFile = file.Name()
+		}
+	} else {
+		cloudInitFile = plan.CloudInitFile.Value
+	}
+
 	_, err := multipass.LaunchV2(&multipass.LaunchReqV2{
 		Name:          plan.Name.Value,
 		Image:         plan.Image.Value,
 		CPUS:          cpus,
 		Memory:        plan.Memory.Value,
 		Disk:          plan.Disk.Value,
-		CloudInitFile: plan.CloudInitFile.Value,
+		CloudInitFile: cloudInitFile,
 	})
 
 	if err != nil {
