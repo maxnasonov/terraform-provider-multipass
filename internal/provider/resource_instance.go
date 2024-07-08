@@ -146,8 +146,8 @@ func (r instanceResource) Create(ctx context.Context, req tfsdk.CreateResourceRe
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer file.Close()
-			defer os.Remove(file.Name())
+			//defer file.Close()
+			//defer os.Remove(file.Name())
 
 			data := []byte(plan.CloudInitString.Value)
 			if _, err := file.Write(data); err != nil {
