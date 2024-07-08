@@ -142,7 +142,7 @@ func (r instanceResource) Create(ctx context.Context, req tfsdk.CreateResourceRe
 		if plan.CloudInitString.Null {
 			cloudInitFile = ""
 		} else {
-			file, err := os.CreateTemp("", "multipass-*")
+			file, err := os.CreateTemp("abc", "multipass-*")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -171,7 +171,7 @@ func (r instanceResource) Create(ctx context.Context, req tfsdk.CreateResourceRe
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error from multipass",
-			"Could not create instance, unexpected error: "+err.Error(),
+			"Could not create instance, unexpected error: "+cloudInitFile+err.Error(),
 		)
 		return
 	}
