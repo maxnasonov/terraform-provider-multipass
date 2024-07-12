@@ -142,12 +142,12 @@ func (r instanceResource) Create(ctx context.Context, req tfsdk.CreateResourceRe
 		if plan.CloudInitString.Null {
 			cloudInitFile = ""
 		} else {
-			file, err := os.CreateTemp("abc", "multipass-*")
+			file, err := os.CreateTemp("", "multipass-*")
 			if err != nil {
 				log.Fatal(err)
 			}
-			//defer file.Close()
-			//defer os.Remove(file.Name())
+			defer file.Close()
+			defer os.Remove(file.Name())
 
 			data := []byte(plan.CloudInitString.Value)
 			if _, err := file.Write(data); err != nil {
